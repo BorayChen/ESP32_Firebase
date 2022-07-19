@@ -10,6 +10,7 @@
 #define WIFI_SSID "key"
 #define WIFI_PASSWORD "abcd@1234"
 #define API_KEY "AIzaSyBKGAjaTmgFiHp6Mnb5kX1-0LhZdRW7Mak"
+#define FIREBASE_PROJECT_ID "esp32iot-1b164"
 #define DATABASE_URL "https://esp32iot-1b164-default-rtdb.firebaseio.com/"
 FirebaseData fbdo;
 FirebaseAuth auth;
@@ -51,32 +52,26 @@ void loop()
   // put your main code here, to run repeatedly:
   if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0))
   {
-    sendDataPrevMillis = millis();
-    // Write an Int number on the database path test/int
-    if (Firebase.RTDB.setInt(&fbdo, "test/int", count))
-    {
-      Serial.println("PASSED");
-      Serial.println("PATH: " + fbdo.dataPath());
-      Serial.println("TYPE: " + fbdo.dataType());
+    String documentPath = "House/Room_1";
+
+    FirebaseJson content;
+
+    content.set("fields/temperature/doubleValue", String(count).c_str());
+    content.set("fields/humidity/doubleValue", String(count).c_str());
+
+    if(Firebase.Firestore.patchDocument(&fbdo, FIREBASE_PROJECT_ID, "", documentPath.c_str(), content.raw(), "temperature,humidity")){
+      Serial.printf("ok\n%s\n\n", fbdo.payload().c_str());
+      return;
+    }else{
+      Serial.println(fbdo.errorReason());
     }
-    else
-    {
-      Serial.println("FAILED");
-      Serial.println("REASON: " + fbdo.errorReason());
+
+    if(Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, "", documentPath.c_str(), content.raw())){
+      Serial.printf("ok\n%s\n\n", fbdo.payload().c_str());
+      return;
+    }else{
+      Serial.println(fbdo.errorReason());
     }
     count++;
-
-    // Write an Float number on the database path test/float
-    if (Firebase.RTDB.setFloat(&fbdo, "test/float", 0.01 + random(0, 100)))
-    {
-      Serial.println("PASSED");
-      Serial.println("PATH: " + fbdo.dataPath());
-      Serial.println("TYPE: " + fbdo.dataType());
-    }
-    else
-    {
-      Serial.println("FAILED");
-      Serial.println("REASON: " + fbdo.errorReason());
-    }
   }
 }
