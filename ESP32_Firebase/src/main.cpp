@@ -18,6 +18,18 @@ FirebaseConfig config;
 unsigned long sendDataPrevMillis = 0;
 int count = 0;
 bool signupOK = false;
+
+struct sensorInfo
+{
+  String temperature = "fields/temperature/doubleValue";
+  String humidity = "fields/humidity/doubleValue";
+  String CO2 = "fields/CO2/doubleValue";
+  String noise = "fields/noise/doubleValue";
+  String TVOC = "fields/TVOC/doubleValue";
+  String lightLUX = "fields/lightLUX/doubleValue";
+  String CO = "fields/CO/doubleValue";
+} getValue;
+String sensor[7] = {getValue.temperature, getValue.humidity, getValue.CO2, getValue.noise, getValue.TVOC, getValue.CO};
 void setup()
 {
   Serial.begin(115200);
@@ -44,34 +56,64 @@ void setup()
 
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
+
   // put your setup code here, to run once:
 }
 
 void loop()
 {
   // put your main code here, to run repeatedly:
-  if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0))
+  if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 10000 || sendDataPrevMillis == 0))
   {
+    sendDataPrevMillis = millis();
     String documentPath = "House/Room_1";
 
     FirebaseJson content;
+    
+    count = count + 1;
+    for (int i = 0; i <= 7; i++)
+    {
+      int testValue = i;
+      content.set(sensor[i], String(testValue).c_str());
+    }
 
-    content.set("fields/temperature/doubleValue", String(count).c_str());
-    content.set("fields/humidity/doubleValue", String(count).c_str());
-
-    if(Firebase.Firestore.patchDocument(&fbdo, FIREBASE_PROJECT_ID, "", documentPath.c_str(), content.raw(), "temperature,humidity")){
+    if (Firebase.Firestore.patchDocument(&fbdo, FIREBASE_PROJECT_ID, "", documentPath.c_str(), content.raw(), "temperature,humidity,CO2,noise,TVOC,CO"))
+    {
       Serial.printf("ok\n%s\n\n", fbdo.payload().c_str());
       return;
-    }else{
+    }
+    else
+    {
       Serial.println(fbdo.errorReason());
     }
 
-    if(Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, "", documentPath.c_str(), content.raw())){
+    if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, "", documentPath.c_str(), content.raw()))
+    {
       Serial.printf("ok\n%s\n\n", fbdo.payload().c_str());
       return;
-    }else{
+    }
+    else
+    {
       Serial.println(fbdo.errorReason());
     }
-    count++;
+
+    // count++;
+    // count = count + 1;
+
+    // Serial.print("Get a document... ");
+    //   if (Firebase.Firestore.getDocument(&fbdo, FIREBASE_PROJECT_ID, "", documentPath.c_str(), ""))
+    //   {
+    //     Serial.printf("ok\n%s\n\n", fbdo.payload().c_str());
+
+    //     // Create a FirebaseJson object and set content with received payload
+    //     FirebaseJson payload;
+    //     payload.setJsonData(fbdo.payload().c_str());
+
+    //     // Get the data from FirebaseJson object
+    //     FirebaseJsonData jsonData;
+    //     payload.get(jsonData, "fields/temperature/doubleValue", true);
+    //     Serial.println(jsonData.stringValue);
+    //   }
+    // }
   }
 }
